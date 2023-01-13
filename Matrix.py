@@ -4,7 +4,7 @@ import random
 class Matrix:
     PRECISION = 1e-10
 
-    def __init__(self, mat, n, m):
+    def __init__(self, mat: list, n: int, m: int):
         self.n = n
         self.m = m
         self.matrix = mat
@@ -12,27 +12,18 @@ class Matrix:
     def __add__(self, other):  # self + other
         if self.n != other.n or self.m != other.m:
             raise Exception("Add error: Matrix sizes aren't equal")
-        res = Matrix([[0 for j in range(self.m)] for i in range(self.n)], self.n, self.m)
-        for i in range(self.n):
-            for j in range(self.m):
-                res[i][j] = self[i][j] + other[i][j]
+        res = Matrix([[self[i][j] + other[i][j] for j in range(self.m)] for i in range(self.n)], self.n, self.m)
         return res
 
     def __sub__(self, other):  # self - other
         if self.n != other.n or self.m != other.m:
             raise Exception("Sub error: Matrix sizes aren't equal")
-        res = Matrix([[0 for j in range(self.m)] for i in range(self.n)], self.n, self.m)
-        for i in range(self.n):
-            for j in range(self.m):
-                res[i][j] = self[i][j] - other[i][j]
+        res = Matrix([[self[i][j] - other[i][j] for j in range(self.m)] for i in range(self.n)], self.n, self.m)
         return res
 
     def __mul__(self, other):  # self x other
         if isinstance(other, float) or isinstance(other, int):
-            res = Matrix([[0 for j in range(self.m)] for i in range(self.n)], self.n, self.m)
-            for i in range(self.n):
-                for j in range(self.m):
-                    res[i][j] = self[i][j] * other
+            res = Matrix([[self[i][j] * other for j in range(self.m)] for i in range(self.n)], self.n, self.m)
             return res
         else:
             return self.dot(other)
@@ -40,10 +31,7 @@ class Matrix:
     def __truediv__(self, other):  # self / other (only for numbers)
         if not isinstance(other, float) and not isinstance(other, int):
             raise Exception("Div error: " + type(other) + " isn't a number")
-        res = Matrix([[0 for j in range(self.m)] for i in range(self.n)], self.n, self.m)
-        for i in range(self.n):
-            for j in range(self.m):
-                res[i][j] = self[i][j] / other
+        res = Matrix([[self[i][j] / other for j in range(self.m)] for i in range(self.n)], self.n, self.m)
         return res
 
     def __eq__(self, other):  # self == other
@@ -67,19 +55,38 @@ class Matrix:
             s += self[i].__str__() + "\n"
         return s
 
+    def copy(self):
+        return Matrix([[self[i][j] for j in range(self.m)] for i in range(self.n)], self.n, self.m)
+
+    def replace_row(self, i: int, value):
+        if isinstance(value, list):
+            self.matrix[i] = value
+        elif isinstance(value, Matrix):
+            if value.m != 1 or value.n != self.n:
+                raise Exception("Replace_row error: invalid value Matrix size = ({}, {})".format(value.n, value.m))
+            for j in range(self.m):
+                self[i][j] = value[i][0]
+        else:
+            raise Exception("Replace_row error: invalid value class " + type(value))
+
+    def replace_col(self, j: int, value):
+        pass
+    @staticmethod
+    def zeros(n: int, m: int):
+        return Matrix([[0 for j in range(m)] for i in range(n)], n, m)
+
     def dot(self, other):  # self x other_matrix
         if self.m != other.n:
             raise Exception("Dot error: Number of columns isn't equal to number of rows")
-        res = Matrix([[0 for j in range(other.m)] for i in range(self.n)], self.n, other.m)
+        res = Matrix.zeros(self.n, other.m)
         for i in range(self.n):
             for j in range(other.m):
-                res[i][j] = 0
                 for k in range(self.m):
                     res[i][j] += self[i][k] * other[k][j]
         return res
 
     def transpose(self):  # creates new matrix without overwriting an existing one
-        res = Matrix([[0 for j in range(self.n)] for i in range(self.m)], self.m, self.n)
+        res = Matrix.zeros(self.m, self.n)
         for i in range(self.m):
             for j in range(self.n):
                 res[i][j] = self[j][i]
@@ -123,11 +130,12 @@ class Matrix:
     def is_invertible(self):
         return False if abs(self.det()) < self.PRECISION or (self.n != self.m) else True
 
-    def inverse_adjugate(self):
-        if not self.is_invertible():
-            raise Exception("Inverse error: Matrix isn't invertible")
+    def inverse_adjugate(self, check_is_invertible=True):
+        if check_is_invertible:
+            if not self.is_invertible():
+                raise Exception("Inverse error: Matrix isn't invertible")
         transposed = self.transpose()
-        cofactor_matrix = Matrix([[0 for t in range(self.n)] for k in range(self.n)], self.n, self.n)
+        cofactor_matrix = Matrix.zeros(self.n, self.n)
         for i in range(self.n):
             for j in range(self.n):
                 cofactor_matrix[i][j] = Matrix._minor(transposed.matrix, i, j) * ((-1) ** (2 + i + j))
@@ -135,7 +143,7 @@ class Matrix:
         return res
 
     def upper_triangular(self, clear_zero_rows=True):
-        uppmatrix = Matrix([[0 for t in range(self.m)] for k in range(self.n)], self.n, self.m)
+        uppmatrix = Matrix.zeros(self.n, self.m)
         for i in range(self.n):
             for j in range(self.m):
                 uppmatrix[i][j] = self[i][j]
@@ -174,7 +182,7 @@ class Matrix:
                     deleted_cnt += 1
         return uppmatrix
 
-    def gauss_jordan(self):
+    def gauss_jordan(self):  # TODO: zero rows reduction param
         res = self.upper_triangular()
         for curij in range(res.n - 1, -1, -1):
             for i in range(1, curij + 1):  # Get zeros above 1 (skipped if k == range minimum)
@@ -183,10 +191,11 @@ class Matrix:
                     res[curij - i][j] -= muler * res[curij][j]
         return res
 
-    def inverse_gaussian(self):
-        if not self.is_invertible():
-            raise Exception("Inverse error: Matrix isn't invertible")
-        attached_matrix = Matrix([[0 for t in range(self.n * 2)] for k in range(self.n)], self.n, self.n * 2)
+    def inverse_gaussian(self, check_is_invertible=True):
+        if check_is_invertible:
+            if not self.is_invertible():
+                raise Exception("Inverse error: Matrix isn't invertible")
+        attached_matrix = Matrix.zeros(self.n, self.n * 2)
         for i in range(self.n):
             for j in range(self.n):
                 attached_matrix[i][j] = self[i][j]
@@ -195,7 +204,7 @@ class Matrix:
 
         attached_matrix = attached_matrix.gauss_jordan()
 
-        res = Matrix([[0 for t in range(self.n)] for k in range(self.n)], self.n, self.n)
+        res = Matrix.zeros(self.n, self.n)
         for i in range(self.n):
             for j in range(self.m):
                 res[i][j] = attached_matrix[i][j + self.n]
@@ -207,7 +216,7 @@ class Matrix:
 
 
 if __name__ == '__main__':
-    a = Matrix([[random.randint(0, 5) for j in range(4)] for i in range(3)], 3, 4)
+    a = Matrix([[random.randint(0, 5) for j in range(100)] for i in range(100)], 100, 100)
     print("Матрица A")
     print(a)
     b = a.transpose()
@@ -216,17 +225,24 @@ if __name__ == '__main__':
     c = a * b
     print("Матрица C = A x B")
     print(c)
-    print("Определитель матрицы C = ", c.det())
-    print(c.is_invertible())
-    print(c.inverse_adjugate())
-    print(c.inverse_gaussian())
-    print(c.rank())
-    # d = Matrix([[2, 5, 7], [6, 3, 4], [5, -2, -3]], 3, 3)
-    # print(d)
-    # print(d.inverse_adjugate())
-    # gg = Matrix([[3, 1, -1, -2, 8], [7, 1, -2, -1, 12], [11, 1, -3, 0, 16], [2, 2, -1, -5, 12]], 4, 5)
-    # print(gg)
-    # gg1 = gg.upper_triangular()
-    # print(gg1)
-    # gg2 = gg.upper_triangular(False)
-    # print(gg2)
+    # print("Определитель матрицы C = ", c.det())
+    # print(c.is_invertible())
+    adjugate = c.inverse_adjugate(check_is_invertible=False)
+    print(adjugate)
+    gaussian = c.inverse_gaussian(check_is_invertible=False)
+    print(gaussian)
+
+    difference_abs = 0
+    difference_percent = 0
+    for i in range(adjugate.n):
+        for j in range(adjugate.m):
+            difference_abs += abs(adjugate[i][j] - gaussian[i][j])
+            difference_percent += abs(adjugate[i][j] - gaussian[i][j]) / ((adjugate[i][j] + gaussian[i][j]) / 2)
+    difference_abs /= adjugate.n * adjugate.m
+    difference_percent /= adjugate.n * adjugate.m
+    print("Средняя абсолютная разность = ", difference_abs)
+    print("Средний процент разности = ", difference_percent, "%")
+    # a = Matrix([[2, 6, 5], [6, 3, 4], [-5, -2, -3]], 3, 3)
+    # print(a.inverse_adjugate())
+    # print(a.inverse_gaussian())
+
