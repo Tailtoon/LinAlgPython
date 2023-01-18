@@ -1,6 +1,3 @@
-import random
-
-
 class Matrix:
     PRECISION = 1e-10
 
@@ -60,17 +57,49 @@ class Matrix:
 
     def replace_row(self, i: int, value):
         if isinstance(value, list):
+            if len(list) != self.m:
+                raise Exception("Replace_row error: invalid len(list) = {}".format(len(value)))
             self.matrix[i] = value
         elif isinstance(value, Matrix):
-            if value.m != 1 or value.n != self.n:
+            if value.n != 1 or value.m != self.m:
                 raise Exception("Replace_row error: invalid value Matrix size = ({}, {})".format(value.n, value.m))
             for j in range(self.m):
-                self[i][j] = value[i][0]
+                self[i][j] = value[0][j]
         else:
             raise Exception("Replace_row error: invalid value class " + type(value))
 
     def replace_col(self, j: int, value):
-        pass
+        if isinstance(value, list):
+            if len(list) != self.n:
+                raise Exception("Replace_col error: invalid len(list) = {}".format(len(value)))
+            for i in range(self.n):
+                self[i][j] = value[i]
+        elif isinstance(value, Matrix):
+            if value.m != 1 or value.n != self.n:
+                raise Exception("Replace_col error: invalid value Matrix size = ({}, {})".format(value.n, value.m))
+            for i in range(self.n):
+                self[i][j] = value[i][0]
+        else:
+            raise Exception("Replace_col error: invalid value class " + type(value))
+
+    def clear_zero_rows(self):
+        delete_list = [False for t in range(self.n)]
+        for i in range(self.n):
+            delete = True
+            for j in range(self.m):
+                if self[i][j] > self.PRECISION:
+                    delete = False
+                    break
+            delete_list[i] = delete
+
+        deleted_cnt = 0
+        for i in range(len(delete_list)):
+            if delete_list[i]:
+                self.matrix.pop(i - deleted_cnt)
+                self.n -= 1
+                deleted_cnt += 1
+        return self
+
     @staticmethod
     def zeros(n: int, m: int):
         return Matrix([[0 for j in range(m)] for i in range(n)], n, m)
@@ -102,6 +131,12 @@ class Matrix:
         n = len(matrix)
         if n == 1:
             return matrix[0][0]
+        if n == 2:
+            return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]
+        if n == 3:
+            return matrix[0][0] * matrix[1][1] * matrix[2][2] + matrix[0][1] * matrix[1][2] * matrix[2][0] \
+                + matrix[1][0] * matrix[2][1] * matrix[0][2] - matrix[0][2] * matrix[1][1] * matrix[2][0] \
+                - matrix[0][1] * matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][1] * matrix[0][0]
         s = 0
         for j in range(n):
             s += matrix[0][j] * Matrix._minor(matrix, 0, j) * ((-1) ** (2 + j))
@@ -128,7 +163,7 @@ class Matrix:
         return minor
 
     def is_invertible(self):
-        return False if abs(self.det()) < self.PRECISION or (self.n != self.m) else True
+        return False if (self.n != self.m) or abs(self.det()) < self.PRECISION else True
 
     def inverse_adjugate(self, check_is_invertible=True):
         if check_is_invertible:
@@ -143,11 +178,8 @@ class Matrix:
         return res
 
     def upper_triangular(self, clear_zero_rows=True):
-        uppmatrix = Matrix.zeros(self.n, self.m)
-        for i in range(self.n):
-            for j in range(self.m):
-                uppmatrix[i][j] = self[i][j]
-        for curij in range(uppmatrix.n):
+        uppmatrix = self.copy()
+        for curij in range(min(uppmatrix.n, uppmatrix.m)):
             if abs(uppmatrix[curij][curij]) < self.PRECISION:  # Get nonzero element at top
                 for i in range(uppmatrix.n - curij):
                     if abs(uppmatrix[curij + i][curij]) > self.PRECISION:
@@ -165,21 +197,7 @@ class Matrix:
                 for j in range(uppmatrix.m):
                     uppmatrix[curij + i][j] -= muler * uppmatrix[curij][j]
         if clear_zero_rows:
-            delete_list = [False for t in range(uppmatrix.n)]
-            for i in range(uppmatrix.n):
-                delete = True
-                for j in range(uppmatrix.m):
-                    if uppmatrix[i][j] > self.PRECISION:
-                        delete = False
-                        break
-                delete_list[i] = delete
-
-            deleted_cnt = 0
-            for i in range(len(delete_list)):
-                if delete_list[i]:
-                    uppmatrix.matrix.pop(i - deleted_cnt)
-                    uppmatrix.n -= 1
-                    deleted_cnt += 1
+            uppmatrix.clear_zero_rows()
         return uppmatrix
 
     def gauss_jordan(self):  # TODO: zero rows reduction param
@@ -214,9 +232,38 @@ class Matrix:
         row_echelon = self.upper_triangular()
         return row_echelon.n
 
+    def LU_decomposition(self, compact_return=False):
+        if self.n != self.m:
+            raise Exception("LU_decomposition error: Matrix isn't square")
+        LU = Matrix.zeros(self.n, self.n)
+        for i in range(self.n):
+            for j in range(i):
+                if abs(LU[j][j]) < self.PRECISION:  # U[j][j] == 0
+                    raise Exception("LU_decomposition error: U[{}][{}] = 0", j, j)
+                s = 0
+                for k in range(j):
+                    s += LU[i][k] * LU[k][j]
+                LU[i][j] = (self[i][j] - s) / LU[j][j]
+            for j in range(i, self.n):
+                s = 0
+                for k in range(i):
+                    s += LU[i][k] * LU[k][j]
+                LU[i][j] = self[i][j] - s
+        if compact_return:
+            return LU
+        L = Matrix.zeros(self.n, self.n)
+        U = Matrix.zeros(self.n, self.n)
+        for i in range(self.n):
+            for j in range(i):
+                L[i][j] = LU[i][j]
+            L[i][i] = 1
+            for j in range(i, self.n):
+                U[i][j] = LU[i][j]
+        return L, U
+
 
 if __name__ == '__main__':
-    a = Matrix([[random.randint(0, 5) for j in range(100)] for i in range(100)], 100, 100)
+    a = Matrix([[5, 0, 1, 0], [4, 4, 2, 4], [1, 2, 2, 1]], 3, 4)
     print("Матрица A")
     print(a)
     b = a.transpose()
@@ -225,24 +272,12 @@ if __name__ == '__main__':
     c = a * b
     print("Матрица C = A x B")
     print(c)
-    # print("Определитель матрицы C = ", c.det())
-    # print(c.is_invertible())
+    print("Определитель матрицы C = ", c.det())
+    print(c.is_invertible())
+    print("Обратная матрица методом присоединенной матрицы")
     adjugate = c.inverse_adjugate(check_is_invertible=False)
     print(adjugate)
+    print("Обратная матрица методом Гаусса-Жордана")
     gaussian = c.inverse_gaussian(check_is_invertible=False)
     print(gaussian)
-
-    difference_abs = 0
-    difference_percent = 0
-    for i in range(adjugate.n):
-        for j in range(adjugate.m):
-            difference_abs += abs(adjugate[i][j] - gaussian[i][j])
-            difference_percent += abs(adjugate[i][j] - gaussian[i][j]) / ((adjugate[i][j] + gaussian[i][j]) / 2)
-    difference_abs /= adjugate.n * adjugate.m
-    difference_percent /= adjugate.n * adjugate.m
-    print("Средняя абсолютная разность = ", difference_abs)
-    print("Средний процент разности = ", difference_percent, "%")
-    # a = Matrix([[2, 6, 5], [6, 3, 4], [-5, -2, -3]], 3, 3)
-    # print(a.inverse_adjugate())
-    # print(a.inverse_gaussian())
-
+    print("rank(C) = ", c.rank())
