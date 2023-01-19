@@ -1,3 +1,5 @@
+import math
+
 class Matrix:
     PRECISION = 1e-10
 
@@ -277,7 +279,53 @@ if __name__ == '__main__':
     print("Обратная матрица методом присоединенной матрицы")
     adjugate = c.inverse_adjugate(check_is_invertible=False)
     print(adjugate)
+    print("C^(-1) * C")
+    print(adjugate * c)
+    print("C * C^(-1)")
+    print(c * adjugate)
     print("Обратная матрица методом Гаусса-Жордана")
     gaussian = c.inverse_gaussian(check_is_invertible=False)
     print(gaussian)
+    print("C^(-1) * C")
+    print(gaussian * c)
+    print("C * C^(-1)")
+    print(c * gaussian)
     print("rank(C) = ", c.rank())
+
+    a = Matrix([[-1, 2, 0], [2, 1, 2], [0, 2, -1]], 3, 3)
+    print("Матрица A")
+    print(a)
+    b = Matrix([[1, 1, -1], [-1, 2, 0], [1, 1, 1]], 3, 3)
+    print("Матрица B")
+    print(b)
+    inv_b = b.inverse_adjugate()
+    print("Матрица B^(-1)")
+    print(inv_b)
+    diag_a = inv_b * a * b
+    print("B^(-1)*A*B = ")
+    print(diag_a)
+    kanon_a = b * diag_a * inv_b
+    print("Каноническое представление матрицы A")
+    print(kanon_a)
+    print("B*(diag_a^2)*B^-1")
+    print(b * diag_a * diag_a * inv_b)
+    print("A^2")
+    print(a * a)
+
+    print("B*(diag_a^-1)*B^-1")
+    print(b * diag_a.inverse_adjugate() * inv_b)
+    print("A^-1")
+    print(a.inverse_adjugate())
+
+    diag_a_sqrt = diag_a.copy()
+    for i in range(3):
+        if __name__ == '__main__':
+            diag_a_sqrt.matrix[i][i] = diag_a_sqrt.matrix[i][i] ** (0.5)
+    print("diag_a_sqrt")
+    print(diag_a_sqrt)
+    print("Q^2 = B*(diag_a_sqrt^2)*B^-1")
+    print(b * diag_a_sqrt * diag_a_sqrt * inv_b)
+    print("A")
+    print(a)
+
+

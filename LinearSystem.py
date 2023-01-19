@@ -187,3 +187,26 @@ if __name__ == "__main__":
     ls = LinearSystem(a, b)
     print(ls.solve_gaussian())
     print(a * Matrix([[1], [0], [-1], [0], [0]], 5, 1))
+
+    for i in [-3, 3, -1]:
+        print("lambda = ", i)
+        a = Matrix([[-1-i, 2, 0], [2, 1-i, 2], [0, 2, -1-i]], 3, 3)
+        print("Матрица A")
+        print(a)
+        b = Matrix([[0], [0], [0]], 3, 1)
+        print("Матрица B")
+        print(b)
+        print("Ранг A = ", a.rank())
+        augmented = Matrix([[0 for t in range(a.m + b.m)] for k in range(a.n)],
+                           a.n, a.m + b.m)
+        for i in range(augmented.n):
+            for j in range(augmented.m):
+                if j > augmented.m - 2:
+                    augmented[i][j] = b[i][0]
+                else:
+                    augmented[i][j] = a[i][j]
+        augmented = augmented.gauss_jordan()
+        print("Ранг A|B = ", augmented.n)
+        ls = LinearSystem(a, b)
+        print("Решение системы")
+        print(ls.solve_gaussian())
