@@ -151,6 +151,7 @@ if __name__ == "__main__":
     print(L)
     print(U)
     print(a.LU_decomposition(compact_return=True))
+    print("L * U")
     print(L * U)
     augmented = Matrix([[0 for t in range(a.m + b.m)] for k in range(a.n)],
                        a.n, a.m + b.m)
